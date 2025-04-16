@@ -84,30 +84,78 @@ export const createProduct = async (req: Request, res: Response) => {
  *     tags: [Products]
  *     security:
  *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *         description: Page number
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 10
+ *         description: Number of products per page
+ *       - in: query
+ *         name: search
+ *         schema:
+ *           type: string
+ *         description: Search term for product name
+ *       - in: query
+ *         name: sortBy
+ *         schema:
+ *           type: string
+ *           enum: [name, price, createdAt]
+ *         description: Field to sort by
+ *       - in: query
+ *         name: sortOrder
+ *         schema:
+ *           type: string
+ *           enum: [asc, desc]
+ *           default: asc
+ *         description: Sort order
  *     responses:
  *       200:
  *         description: List of products
  *         content:
  *           application/json:
  *             schema:
- *               type: array
- *               items:
- *                 $ref: '#/components/schemas/Product'
+ *               type: object
+ *               properties:
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/Product'
+ *                 total:
+ *                   type: integer
+ *                 totalPages:
+ *                   type: integer
+ *                 currentPage:
+ *                   type: integer
  *       401:
  *         description: Unauthorized
  */
 export const getAllProducts = async (req: Request, res: Response) => {
     try {
         const authReq = req as AuthenticatedRequest;
-        const products = await productservice.getProducts(authReq.user.userId);
+        const { page = 1, limit = 10, search, sortBy, sortOrder } = req.query;
+
+        const products = await productservice.getProducts(
+            authReq.user.userId,
+            parseInt(page as string),
+            parseInt(limit as string),
+            search as string,
+            sortBy as string,
+            sortOrder as "asc" | "desc"
+        );
+
         logger.info(`Fetched products for user: ${authReq.user.userId}`);
         res.json(products);
     } catch (error) {
         logger.error(`Error fetching products: ${error}`);
         throw error;
-
     }
-
 };
 
 /**
