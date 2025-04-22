@@ -10,6 +10,8 @@ interface AuthenticatedRequest extends Request {
         userId: number;
         [key: string]: any;
     };
+
+
 }
 
 /**
@@ -154,7 +156,6 @@ export const getProductById = async (req: Request, res: Response) => {
     }
 
 };
-
 /**
  * @swagger
  * /products/{id}:
@@ -173,9 +174,24 @@ export const getProductById = async (req: Request, res: Response) => {
  *     requestBody:
  *       required: true
  *       content:
- *         application/json:
+ *         multipart/form-data:
  *           schema:
- *             $ref: '#/components/schemas/ProductInput'
+ *             type: object
+ *             properties:
+ *               name:
+ *                 type: string
+ *                 description: Name of the product
+ *               description:
+ *                 type: string
+ *                 description: Description of the product
+ *               price:
+ *                 type: number
+ *                 format: float
+ *                 description: Price of the product
+ *               image:
+ *                 type: string
+ *                 format: binary
+ *                 description: Image file for the product
  *     responses:
  *       200:
  *         description: Updated product details
@@ -200,16 +216,23 @@ export const updateProduct = async (req: Request, res: Response) => {
         if (!validator.success) {
             throw new BadRequestException('Validation error', validator.error.errors);
         }
+
         const authReq = req as AuthenticatedRequest;
-        const updatedProduct = await productservice.updateProduct(authReq.user.userId, id, validator.data);
+        const image = req.file?.filename;
+
+        const updatedProduct = await productservice.updateProduct(
+            authReq.user.userId,
+            id,
+            validator.data,
+            image
+        );
+
         logger.info(`Product updated: ${updatedProduct.name}`);
         res.json(updatedProduct);
     } catch (error) {
         logger.error(`Error updating product: ${error}`);
         throw error;
-
     }
-
 };
 
 /**

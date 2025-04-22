@@ -32,15 +32,18 @@ export const getProductById = async (userId: number, productId: number) => {
     }
     return singleProduct;
 }
-export const updateProduct = async (userId: number, productId: number, input: ProductInput) => {
+export const updateProduct = async (userId: number, productId: number, input: ProductInput, image?: string) => {
+    const updateData: any = { ...input };
+
+    if (image) {
+        updateData.image = image;
+    }
     return await prisma.product.update({
         where: {
             id: productId,
             userId
         },
-        data: {
-            ...input
-        }
+        data: updateData
     });
 }
 export const deleteProduct = async (userId: number, productId: number) => {
