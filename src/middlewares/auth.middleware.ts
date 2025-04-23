@@ -1,6 +1,14 @@
 import { Request, Response, NextFunction } from 'express';
-import { verifyToken } from '@utils/jwt';
-import { UnauthorizedException } from '@/exceptions/UnauthorizedException';
+import { verifyToken } from '../utils/jwt';
+import { UnauthorizedException } from '../exceptions/UnauthorizedException';
+
+interface AuthenticatedRequest extends Request {
+    user: {
+        userId: number;
+        [key: string]: any;
+    };
+}
+
 export const authenticate = (
     req: Request,
     res: Response,
@@ -14,7 +22,7 @@ export const authenticate = (
     const token = authHeader.split(' ')[1];
     try {
         const decoded = verifyToken(token);
-        req.user = decoded;
+        (req as AuthenticatedRequest).user = decoded;
         next();
     } catch (error) {
         throw new UnauthorizedException('Invalid token');

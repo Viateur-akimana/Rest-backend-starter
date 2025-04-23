@@ -1,9 +1,9 @@
-import prisma from '@config/database';
-import { generateToken } from '@utils/jwt';
+import prisma from '../../config/database';
+import { generateToken } from '../../utils/jwt';
 import { LoginInput, RegisterInput } from './auth.validator';
-import { BadRequestException } from '@/exceptions/BadRequestException';
-import { UnauthorizedException } from '@/exceptions/UnauthorizedException';
-import { comparePassword, hashPassword } from '@utils/bcrypt'
+import { BadRequestException } from '../../exceptions/BadRequestException';
+import { UnauthorizedException } from '../../exceptions/UnauthorizedException';
+import { comparePassword, hashPassword } from '../../utils/bcrypt'
 
 
 
@@ -25,7 +25,7 @@ export const register = async (input: RegisterInput) => {
             name
         }
     });
-    const token = generateToken({ id: user.id });
+    const token = generateToken(user.id);
     return {
         token, user
     }
@@ -47,7 +47,7 @@ export const login = async (input: LoginInput) => {
     if (!isPasswordValid) {
         throw new UnauthorizedException('Invalid credentials');
     }
-    const token = generateToken({ id: user.id });
+    const token = generateToken(user.id);
     return {
         token, user
     }

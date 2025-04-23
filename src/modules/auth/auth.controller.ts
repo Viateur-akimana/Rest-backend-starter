@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import * as authService from './auth.service';
 import { loginSchema, registerSchema } from './auth.validator';
-import { BadRequestException } from '@/exceptions/BadRequestException';
+import { BadRequestException } from '../../exceptions/BadRequestException';
 
 
 export const register = async (req: Request, res: Response) => {

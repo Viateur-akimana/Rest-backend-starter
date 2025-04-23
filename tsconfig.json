@@ -22,6 +22,9 @@
       "@config/*": [
         "src/config/*"
       ],
+      "@exceptions/*": [
+        "src/exceptions/*"
+      ],
       "@modules/*": [
         "src/modules/*"
       ],
@@ -37,7 +40,8 @@
     "incremental": true
   },
   "include": [
-    "src/**/*"
+    "src/**/*",
+    "src/types/*.d.ts"
   ],
   "exclude": [
     "node_modules",

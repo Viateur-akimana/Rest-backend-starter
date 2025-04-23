@@ -13,12 +13,12 @@ app.use(express.json());
 app.use(cors());
 app.use(helmet());
 app.use(morgan('dev'));
+app.use(authenticate);
 
 app.use('/api/auth', authRouter);
 app.use('/api/products', productRouter);
 
 app.use(errorMiddleware);
-app.use(authenticate)
 
 export default app;
 
