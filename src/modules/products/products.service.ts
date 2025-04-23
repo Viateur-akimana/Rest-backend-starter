@@ -1,3 +1,4 @@
+import { NotFoundException } from "../../exceptions/NotFoundException";
 import prisma from "../../config/database";
 import { ProductInput } from "./products.validator";
 
@@ -19,12 +20,16 @@ export const getProducts = async (userId: number) => {
     });
 }
 export const getProductById = async (userId: number, productId: number) => {
-    return await prisma.product.findFirst({
+    const singleProduct = await prisma.product.findFirst({
         where: {
             id: productId,
             userId
         }
     });
+    if (!singleProduct) {
+        throw new NotFoundException("Product not found with such id and user");
+    }
+    return singleProduct;
 }
 export const updateProduct = async (userId: number, productId: number, input: ProductInput) => {
     return await prisma.product.update({

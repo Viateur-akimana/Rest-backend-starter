@@ -6,17 +6,19 @@ import { errorMiddleware } from './middlewares/error.middleware';
 import { authenticate } from './middlewares/auth.middleware'
 import authRouter from './modules/auth/auth.router';
 import productRouter from './modules/products/products.router';
+import { swaggerUiMiddleware, swaggerUiSetup } from './config/swagger';
 
 const app = express();
 
 app.use(express.json());
 app.use(cors());
-app.use(helmet());
+// app.use(helmet());
 app.use(morgan('dev'));
-app.use(authenticate);
 
+
+app.use('/api/docs', swaggerUiMiddleware, swaggerUiSetup);
 app.use('/api/auth', authRouter);
-app.use('/api/products', productRouter);
+app.use('/api/products', authenticate, productRouter);
 
 app.use(errorMiddleware);
 
