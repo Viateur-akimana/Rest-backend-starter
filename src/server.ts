@@ -1,17 +1,18 @@
 import app from './app';
 import prisma from './config/database';
+import logger from './config/logger';
 import { PORT } from './config/server';
 
 const startServer = async () => {
     try {
         await prisma.$connect();
-        console.log('Database connected');
+        logger.info('Database connected');
 
         app.listen(PORT, () => {
-            console.log(`Server running on port ${PORT}`);
+            logger.info(`Server running on port ${PORT}`);
         });
     } catch (error) {
-        console.error('Failed to start server:', error);
+        logger.error('Failed to start server:', error);
         process.exit(1);
     }
 };

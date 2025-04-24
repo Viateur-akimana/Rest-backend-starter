@@ -2,6 +2,8 @@ import { Request, Response } from 'express';
 import { productSchema } from './products.validator';
 import * as productservice from './products.service';
 import { BadRequestException } from '../../exceptions/BadRequestException';
+import logger from '../../config/logger';
+import { log } from 'console';
 
 interface AuthenticatedRequest extends Request {
     user: {
@@ -44,13 +46,21 @@ interface AuthenticatedRequest extends Request {
  *         description: Unauthorized
  */
 export const createProduct = async (req: Request, res: Response) => {
-    const validator = productSchema.safeParse(req.body);
-    if (!validator.success) {
-        throw new BadRequestException('Validation error', validator.error.errors);
+    try {
+        const validator = productSchema.safeParse(req.body);
+        if (!validator.success) {
+            throw new BadRequestException('Validation error', validator.error.errors);
+        }
+        const authReq = req as AuthenticatedRequest;
+        const product = await productservice.createProduct(authReq.user.userId, validator.data);
+        logger.info(`Product created: ${product.name}`);
+        res.status(201).json(product);
+    } catch (error) {
+        logger.error(`Error during product creation: ${error}`);
+        throw error;
+
     }
-    const authReq = req as AuthenticatedRequest;
-    const product = await productservice.createProduct(authReq.user.userId, validator.data);
-    res.status(201).json(product);
+
 };
 
 /**
@@ -74,9 +84,17 @@ export const createProduct = async (req: Request, res: Response) => {
  *         description: Unauthorized
  */
 export const getAllProducts = async (req: Request, res: Response) => {
-    const authReq = req as AuthenticatedRequest;
-    const products = await productservice.getProducts(authReq.user.userId);
-    res.json(products);
+    try {
+        const authReq = req as AuthenticatedRequest;
+        const products = await productservice.getProducts(authReq.user.userId);
+        logger.info(`Fetched products for user: ${authReq.user.userId}`);
+        res.json(products);
+    } catch (error) {
+        logger.error(`Error fetching products: ${error}`);
+        throw error;
+
+    }
+
 };
 
 /**
@@ -109,13 +127,21 @@ export const getAllProducts = async (req: Request, res: Response) => {
  *         description: Product not found
  */
 export const getProductById = async (req: Request, res: Response) => {
-    const id = parseInt(req.params.id);
-    if (isNaN(id)) {
-        throw new BadRequestException('Invalid product id');
+    try {
+        const id = parseInt(req.params.id);
+        if (isNaN(id)) {
+            throw new BadRequestException('Invalid product id');
+        }
+        const authReq = req as AuthenticatedRequest;
+        const singleProduct = await productservice.getProductById(authReq.user.userId, id);
+        logger.info(`Fetched product by ID: ${id}`);
+        res.json(singleProduct);
+    } catch (error) {
+        logger.error(`Error fetching product by ID: ${error}`);
+        throw error;
+
     }
-    const authReq = req as AuthenticatedRequest;
-    const singleProduct = await productservice.getProductById(authReq.user.userId, id);
-    res.json(singleProduct);
+
 };
 
 /**
@@ -154,17 +180,25 @@ export const getProductById = async (req: Request, res: Response) => {
  *         description: Product not found
  */
 export const updateProduct = async (req: Request, res: Response) => {
-    const id = parseInt(req.params.id);
-    if (isNaN(id)) {
-        throw new BadRequestException('Invalid product id');
+    try {
+        const id = parseInt(req.params.id);
+        if (isNaN(id)) {
+            throw new BadRequestException('Invalid product id');
+        }
+        const validator = productSchema.safeParse(req.body);
+        if (!validator.success) {
+            throw new BadRequestException('Validation error', validator.error.errors);
+        }
+        const authReq = req as AuthenticatedRequest;
+        const updatedProduct = await productservice.updateProduct(authReq.user.userId, id, validator.data);
+        logger.info(`Product updated: ${updatedProduct.name}`);
+        res.json(updatedProduct);
+    } catch (error) {
+        logger.error(`Error updating product: ${error}`);
+        throw error;
+
     }
-    const validator = productSchema.safeParse(req.body);
-    if (!validator.success) {
-        throw new BadRequestException('Validation error', validator.error.errors);
-    }
-    const authReq = req as AuthenticatedRequest;
-    const updatedProduct = await productservice.updateProduct(authReq.user.userId, id, validator.data);
-    res.json(updatedProduct);
+
 };
 
 /**
@@ -193,11 +227,19 @@ export const updateProduct = async (req: Request, res: Response) => {
  *         description: Product not found
  */
 export const deleteProduct = async (req: Request, res: Response) => {
-    const id = parseInt(req.params.id);
-    if (isNaN(id)) {
-        throw new BadRequestException('Invalid product id');
+    try {
+        const id = parseInt(req.params.id);
+        if (isNaN(id)) {
+            throw new BadRequestException('Invalid product id');
+        }
+        const authReq = req as AuthenticatedRequest;
+        await productservice.deleteProduct(authReq.user.userId, id);
+        logger.info(`Product deleted: ${id}`);
+        res.status(204).send();
+    } catch (error) {
+        logger.error(`Error deleting product: ${error}`);
+        throw error;
+
     }
-    const authReq = req as AuthenticatedRequest;
-    await productservice.deleteProduct(authReq.user.userId, id);
-    res.status(204).send();
+
 };
