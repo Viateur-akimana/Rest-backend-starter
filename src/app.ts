@@ -7,6 +7,7 @@ import { authenticate } from './middlewares/auth.middleware'
 import authRouter from './modules/auth/auth.router';
 import productRouter from './modules/products/products.router';
 import { swaggerUiMiddleware, swaggerUiSetup } from './config/swagger';
+import { apiRateLimiter } from './middlewares/rateLimit.middleware';
 
 const app = express();
 
@@ -15,7 +16,7 @@ app.use(cors());
 // app.use(helmet());
 app.use(morgan('dev'));
 
-
+app.use(apiRateLimiter);
 app.use('/api/docs', swaggerUiMiddleware, swaggerUiSetup);
 app.use('/api/auth', authRouter);
 app.use('/api/products', authenticate, productRouter);

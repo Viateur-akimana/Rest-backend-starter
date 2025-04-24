@@ -3,7 +3,7 @@ import { productSchema } from './products.validator';
 import * as productservice from './products.service';
 import { BadRequestException } from '../../exceptions/BadRequestException';
 import logger from '../../config/logger';
-import { log } from 'console';
+
 
 interface AuthenticatedRequest extends Request {
     user: {

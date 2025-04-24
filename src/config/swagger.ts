@@ -10,7 +10,7 @@ const options = {
             description: 'API documentation for the backend',
             contact: {
                 name: 'API Support',
-                email: 'support@example.com'
+                email: 'akimanaviateur94@gmail.com'
             }
         },
         servers: [
@@ -103,7 +103,8 @@ const options = {
                             type: 'number',
                             minimum: 0,
                             example: 99.99
-                        }
+                        },
+
                     }
                 },
                 Product: {
