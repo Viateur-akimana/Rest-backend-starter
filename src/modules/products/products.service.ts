@@ -3,10 +3,11 @@ import prisma from "../../config/database";
 import { ProductInput } from "./products.validator";
 
 
-export const createProduct = async (userId: number, input: ProductInput) => {
+export const createProduct = async (userId: number, input: any, image?: string) => {
     return await prisma.product.create({
         data: {
             ...input,
+            image,
             userId
         }
     });

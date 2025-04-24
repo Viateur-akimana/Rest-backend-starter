@@ -30,16 +30,23 @@ interface AuthenticatedRequest extends Request {
  *     requestBody:
  *       required: true
  *       content:
- *         application/json:
+ *         multipart/form-data:
  *           schema:
- *             $ref: '#/components/schemas/ProductInput'
+ *             type: object
+ *             properties:
+ *               name:
+ *                 type: string
+ *               description:
+ *                 type: string
+ *               price:
+ *                 type: number
+ *                 format: float
+ *               image:
+ *                 type: string
+ *                 format: binary
  *     responses:
  *       201:
  *         description: Product created successfully
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Product'
  *       400:
  *         description: Validation error
  *       401:
@@ -52,7 +59,11 @@ export const createProduct = async (req: Request, res: Response) => {
             throw new BadRequestException('Validation error', validator.error.errors);
         }
         const authReq = req as AuthenticatedRequest;
-        const product = await productservice.createProduct(authReq.user.userId, validator.data);
+        const image = req.file?.filename;
+        if (!image) {
+            throw new BadRequestException('Image is required');
+        }
+        const product = await productservice.createProduct(authReq.user.userId, validator.data, image);
         logger.info(`Product created: ${product.name}`);
         res.status(201).json(product);
     } catch (error) {

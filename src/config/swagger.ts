@@ -1,3 +1,4 @@
+import { format } from 'path';
 import swaggerJsdoc from 'swagger-jsdoc';
 import swaggerUi from 'swagger-ui-express';
 
@@ -125,6 +126,9 @@ const options = {
                         price: {
                             type: 'number',
                             example: 99.99
+                        },
+                        image: {
+                            type: 'string',
                         },
                         userId: {
                             type: 'integer',
