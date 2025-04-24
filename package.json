@@ -4,7 +4,8 @@
     "build": "tsc",
     "start": "node dist/server.js",
     "dev": "ts-node-dev src/server.ts",
-    "migrate": "prisma migrate dev"
+    "migrate": "prisma migrate dev",
+    "docker:migrate": "npx prisma migrate deploy"
   },
   "dependencies": {
     "@prisma/client": "^6.6.0",
