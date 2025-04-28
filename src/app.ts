@@ -15,11 +15,12 @@ app.use(express.json());
 app.use(cors());
 // app.use(helmet());
 app.use(morgan('dev'));
-
+app.use('/uploads', express.static('uploads'));
 app.use(apiRateLimiter);
 app.use('/api/docs', swaggerUiMiddleware, swaggerUiSetup);
 app.use('/api/auth', authRouter);
 app.use('/api/products', authenticate, productRouter);
+
 
 app.use(errorMiddleware);
 
