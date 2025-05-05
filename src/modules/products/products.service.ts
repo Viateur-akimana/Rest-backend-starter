@@ -27,7 +27,7 @@ export const getProducts = async (
         ...(search && {
             name: {
                 contains: search,
-                mode: "insensitive", // Case-insensitive search
+                mode: "insensitive",
             },
         }),
     };
