@@ -9,7 +9,7 @@ import { sendEmail } from '../../config/email';
 
 
 export const register = async (input: RegisterInput) => {
-    const { email, password, name } = input;
+    const { email, password, name, role = 'USER' } = input;
     const existingUser = await prisma.user.findUnique({
         where: {
             email
@@ -23,10 +23,11 @@ export const register = async (input: RegisterInput) => {
         data: {
             email,
             password: hashedPassword,
-            name
+            name,
+            role
         }
     });
-    const token = generateToken(user.id);
+    const token = generateToken(user.id, user.role);
     await sendEmail(
         email,
         'Welcome to Our Platform',
@@ -55,7 +56,7 @@ export const login = async (input: LoginInput) => {
     if (!isPasswordValid) {
         throw new UnauthorizedException('Invalid credentials');
     }
-    const token = generateToken(user.id);
+    const token = generateToken(user.id, user.role);
     return {
         token, user
     }

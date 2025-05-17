@@ -6,9 +6,9 @@ const options = {
     definition: {
         openapi: '3.0.0',
         info: {
-            title: 'API Documentation',
+            title: 'Parking Management API Documentation',
             version: '1.0.0',
-            description: 'API documentation for the backend',
+            description: 'API documentation for the parking management backend',
             contact: {
                 name: 'API Support',
                 email: 'akimanaviateur94@gmail.com'
@@ -30,6 +30,7 @@ const options = {
                 }
             },
             schemas: {
+                // Auth Schemas
                 RegisterInput: {
                     type: 'object',
                     required: ['email', 'password'],
@@ -87,62 +88,160 @@ const options = {
                             }
                         }
                     }
-                }, ProductInput: {
+                },
+
+                // User Schemas
+                UserUpdateInput: {
                     type: 'object',
-                    required: ['name', 'price'],
                     properties: {
                         name: {
                             type: 'string',
-                            minLength: 3,
-                            example: 'Premium Widget'
+                            example: 'Jane Doe'
                         },
-                        description: {
+                        email: {
                             type: 'string',
-                            example: 'High-quality widget for professional use'
+                            format: 'email',
+                            example: 'jane@example.com'
                         },
-                        price: {
-                            type: 'number',
-                            minimum: 0,
-                            example: 99.99
-                        },
-
+                        role: {
+                            type: 'string',
+                            enum: ['USER', 'ADMIN'],
+                            example: 'USER'
+                        }
                     }
                 },
-                Product: {
+                UserPasswordUpdateInput: {
                     type: 'object',
+                    required: ['currentPassword', 'newPassword'],
                     properties: {
-                        id: {
-                            type: 'integer',
-                            example: 1
-                        },
-                        name: {
+                        currentPassword: {
                             type: 'string',
-                            example: 'Premium Widget'
+                            example: 'oldpassword'
+                        },
+                        newPassword: {
+                            type: 'string',
+                            minLength: 6,
+                            example: 'newpassword123'
+                        }
+                    }
+                },
+
+                // Vehicle Schemas
+                VehicleInput: {
+                    type: 'object',
+                    required: ['plateNumber', 'vehicleType', 'size'],
+                    properties: {
+                        plateNumber: {
+                            type: 'string',
+                            example: 'RAB 123A'
+                        },
+                        vehicleType: {
+                            type: 'string',
+                            enum: ['CAR', 'MOTORCYCLE', 'TRUCK', 'VAN'],
+                            example: 'CAR'
+                        },
+                        size: {
+                            type: 'string',
+                            enum: ['SMALL', 'MEDIUM', 'LARGE'],
+                            example: 'MEDIUM'
                         },
                         description: {
                             type: 'string',
-                            example: 'High-quality widget for professional use'
-                        },
-                        price: {
-                            type: 'number',
-                            example: 99.99
-                        },
-                        image: {
+                            example: 'Toyota Corolla 2022'
+                        }
+                    }
+                },
+
+                // Parking Slot Schemas
+                SlotInput: {
+                    type: 'object',
+                    required: ['slotNumber', 'vehicleType', 'size', 'location'],
+                    properties: {
+                        slotNumber: {
                             type: 'string',
+                            example: 'A-101'
                         },
-                        userId: {
+                        vehicleType: {
+                            type: 'string',
+                            enum: ['CAR', 'MOTORCYCLE', 'TRUCK', 'VAN'],
+                            example: 'CAR'
+                        },
+                        size: {
+                            type: 'string',
+                            enum: ['SMALL', 'MEDIUM', 'LARGE'],
+                            example: 'MEDIUM'
+                        },
+                        location: {
+                            type: 'string',
+                            enum: ['NORTH', 'SOUTH', 'EAST', 'WEST'],
+                            example: 'NORTH'
+                        },
+                        status: {
+                            type: 'string',
+                            enum: ['AVAILABLE', 'UNAVAILABLE'],
+                            example: 'AVAILABLE'
+                        }
+                    }
+                },
+                BulkSlotInput: {
+                    type: 'object',
+                    required: ['count', 'startNumber', 'vehicleType', 'size', 'location'],
+                    properties: {
+                        count: {
+                            type: 'integer',
+                            minimum: 1,
+                            example: 10
+                        },
+                        prefix: {
+                            type: 'string',
+                            example: 'A-'
+                        },
+                        startNumber: {
+                            type: 'integer',
+                            minimum: 1,
+                            example: 101
+                        },
+                        vehicleType: {
+                            type: 'string',
+                            enum: ['CAR', 'MOTORCYCLE', 'TRUCK', 'VAN'],
+                            example: 'CAR'
+                        },
+                        size: {
+                            type: 'string',
+                            enum: ['SMALL', 'MEDIUM', 'LARGE'],
+                            example: 'MEDIUM'
+                        },
+                        location: {
+                            type: 'string',
+                            enum: ['NORTH', 'SOUTH', 'EAST', 'WEST'],
+                            example: 'NORTH'
+                        }
+                    }
+                },
+
+                // Parking Request Schemas
+                RequestInput: {
+                    type: 'object',
+                    required: ['vehicleId'],
+                    properties: {
+                        vehicleId: {
                             type: 'integer',
                             example: 1
-                        },
-                        createdAt: {
+                        }
+                    }
+                },
+                UpdateRequestStatusInput: {
+                    type: 'object',
+                    required: ['status'],
+                    properties: {
+                        status: {
                             type: 'string',
-                            format: 'date-time',
-                            example: '2023-05-21T12:34:56Z'
+                            enum: ['APPROVED', 'REJECTED', 'PENDING'],
+                            example: 'APPROVED'
                         },
-                        updatedAt: {
-                            type: 'string',
-                            format: 'date-time',
-                            example: '2023-05-21T12:34:56Z'
+                        slotId: {
+                            type: 'integer',
+                            example: 5
                         }
                     }
                 }
@@ -156,7 +255,9 @@ const options = {
     },
     apis: [
         './src/modules/auth/*.ts',
-        './src/modules/products/*.ts'
+        './src/modules/users/*.ts',
+        './src/modules/vehicles/*.ts',
+        './src/modules/parking/*.ts'
     ]
 };
 
@@ -164,6 +265,6 @@ export const swaggerSpec = swaggerJsdoc(options);
 export const swaggerUiMiddleware = swaggerUi.serve;
 export const swaggerUiSetup = swaggerUi.setup(swaggerSpec, {
     explorer: true,
-    customSiteTitle: 'API Documentation',
+    customSiteTitle: 'Parking Management API Documentation',
     customCss: '.swagger-ui .topbar { display: none }'
 });

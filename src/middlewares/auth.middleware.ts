@@ -2,10 +2,10 @@ import { Request, Response, NextFunction } from 'express';
 import { verifyToken } from '../utils/jwt';
 import { UnauthorizedException } from '../exceptions/UnauthorizedException';
 
-interface AuthenticatedRequest extends Request {
+export interface AuthenticatedRequest extends Request {
     user: {
         userId: number;
-        [key: string]: any;
+        role: string;
     };
 }
 

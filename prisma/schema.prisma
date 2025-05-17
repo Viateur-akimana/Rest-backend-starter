@@ -1,0 +1,104 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           Int           @id @default(autoincrement())
+  name         String?
+  email        String        @unique
+  password     String
+  role         Role          @default(USER)
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  vehicles     Vehicle[]
+  slotRequests SlotRequest[]
+  actionLogs   ActionLog[]
+}
+
+enum Role {
+  USER
+  ADMIN
+}
+
+model Vehicle {
+  id           Int           @id @default(autoincrement())
+  plateNumber  String        @unique
+  vehicleType  VehicleType
+  size         VehicleSize
+  attributes   Json? // JSONB for color, model, etc.
+  userId       Int
+  user         User          @relation(fields: [userId], references: [id])
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  slotRequests SlotRequest[]
+}
+
+enum VehicleType {
+  CAR
+  MOTORCYCLE
+  TRUCK
+  VAN
+}
+
+enum VehicleSize {
+  SMALL
+  MEDIUM
+  LARGE
+}
+
+model ParkingSlot {
+  id           Int           @id @default(autoincrement())
+  slotNumber   String        @unique
+  size         VehicleSize
+  vehicleType  VehicleType
+  status       SlotStatus    @default(AVAILABLE)
+  location     Location
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  slotRequests SlotRequest[]
+}
+
+enum SlotStatus {
+  AVAILABLE
+  UNAVAILABLE
+}
+
+enum Location {
+  NORTH
+  SOUTH
+  EAST
+  WEST
+}
+
+model SlotRequest {
+  id          Int           @id @default(autoincrement())
+  userId      Int
+  user        User          @relation(fields: [userId], references: [id])
+  vehicleId   Int
+  vehicle     Vehicle       @relation(fields: [vehicleId], references: [id])
+  slotId      Int?
+  parkingSlot ParkingSlot?  @relation(fields: [slotId], references: [id])
+  status      RequestStatus @default(PENDING)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+}
+
+enum RequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+model ActionLog {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  user      User     @relation(fields: [userId], references: [id])
+  action    String
+  details   String?  @db.Text
+  createdAt DateTime @default(now())
+}

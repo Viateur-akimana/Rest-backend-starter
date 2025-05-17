@@ -1,7 +1,10 @@
+import dotenv from 'dotenv';
+dotenv.config();
 import app from './app';
 import prisma from './config/database';
 import logger from './config/logger';
 import { PORT } from './config/server';
+
 
 const startServer = async () => {
     try {
