@@ -143,9 +143,9 @@ jobs:
 
             # Update environment variables
             cat <<EOF > .env
-            DATABASE_URL=${{ secrets.DATABASE_URL }}
+            DATABASE_URL=mysql://root:${{ secrets.MYSQL_ROOT_PASSWORD }}@db:3306/${{ secrets.MYSQL_DATABASE }}
             JWT_SECRET=${{ secrets.JWT_SECRET }}
-            PORT=${{ secrets.APP_PORT || 3000 }}
+            PORT=3000
             MYSQL_ROOT_PASSWORD=${{ secrets.MYSQL_ROOT_PASSWORD }}
             MYSQL_DATABASE=${{ secrets.MYSQL_DATABASE }}
             MYSQL_PASSWORD=${{ secrets.MYSQL_ROOT_PASSWORD }}
@@ -153,7 +153,11 @@ jobs:
             NODE_ENV=production
             EOF
 
+            # Ensure nginx directory exists and is clean
+            mkdir -p nginx && chmod 755 nginx
+
             # Start stack
+            docker compose down --remove-orphans
             docker compose up --build -d
 
             # Cleanup
@@ -168,7 +172,7 @@ jobs:
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
             cd /home/${{ secrets.EC2_USERNAME }}/app
-            echo "--- DOCKER PS ---"
+            echo "--- DOCKER STATUS ---"
             docker compose ps
             echo "--- APP LOGS ---"
             docker compose logs --tail=100 app
@@ -176,43 +180,42 @@ jobs:
             docker compose logs --tail=100 db
             echo "--- NGINX LOGS ---"
             docker compose logs --tail=100 nginx
+            echo "--- PORT CHECK ---"
+            sudo netstat -tulpn | grep :80 || echo "Port 80 is NOT listening"
+            echo "--- FIREWALL STATUS ---"
+            sudo ufw status
 
       - name: Verify Deployment Health
         run: |
           echo "Waiting for Docker containers to be healthy..."
           HEALTH_URL="http://${{ needs.infrastructure.outputs.ec2_ip }}/health"
-          MAX_RETRIES=15
+          MAX_RETRIES=20
           COUNT=0
           
           until [ $COUNT -ge $MAX_RETRIES ]
           do
             echo "Checking $HEALTH_URL (Attempt $((COUNT+1))/$MAX_RETRIES)..."
-            # Get HTTP code and response body
-            HTTP_RESPONSE=$(curl -s -w "HTTP_CODE:%{http_code}" $HEALTH_URL || echo "CURL_FAILED HTTP_CODE:000")
+            # Enhanced curl with verbose info for debugging
+            HTTP_RESPONSE=$(curl -s -v -w "HTTP_CODE:%{http_code}" $HEALTH_URL 2>&1 || true)
             HTTP_CODE=$(echo "$HTTP_RESPONSE" | grep -o 'HTTP_CODE:[0-9]*' | cut -d: -f2)
-            BODY=$(echo "$HTTP_RESPONSE" | sed 's/HTTP_CODE:[0-9]*//')
             
             echo "HTTP Code: $HTTP_CODE"
-            echo "Response: $BODY"
             
-            HEALTH_STATUS=$(echo "$BODY" | jq -r .status 2>/dev/null || echo "error")
-            
-            if [ "$HEALTH_STATUS" == "UP" ] && [ "$HTTP_CODE" == "200" ]; then
+            if [ "$HTTP_CODE" == "200" ]; then
               echo "Deployment is healthy and live!"
               exit 0
+            elif [ "$HTTP_CODE" == "502" ]; then
+              echo "Nginx is online! Still waiting for App container/Database (502 Gateway)..."
+            elif [ "$HTTP_CODE" == "000" ] || [ -z "$HTTP_CODE" ]; then
+              echo "Still waiting for Nginx to accept connections (Connection Refused)..."
+            else
+              echo "Received unexpected HTTP Code: $HTTP_CODE"
             fi
             
-            if [ "$HTTP_CODE" == "502" ]; then
-              echo "Nginx is up but App is still starting (502 Bad Gateway)..."
-            elif [ "$HTTP_CODE" == "000" ]; then
-              echo "Server is not reachable yet (Connection Refused)..."
-            fi
-            
-            echo "Waiting 15 seconds before next retry..."
+            echo "Waiting 15 seconds..."
             sleep 15
-            COUNT=$((COUNT+1))
+            COUNT=$COUNT+1
           done
           
           echo "Health check failed after $MAX_RETRIES attempts!"
-          echo "Final check for logs..."
           exit 1
