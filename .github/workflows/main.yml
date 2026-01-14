@@ -141,9 +141,9 @@ jobs:
               git reset --hard origin/master
             fi
 
-            # Create .env file with all secrets (GitHub substitutes them BEFORE SSH sends this script)
+            # Create .env file with all secrets
             {
-              echo "DATABASE_URL=mysql://root:${{ secrets.MYSQL_ROOT_PASSWORD }}@db:3306/${{ secrets.MYSQL_DATABASE }}"
+              echo "DATABASE_URL=${{ secrets.DATABASE_URL }}"
               echo "JWT_SECRET=${{ secrets.JWT_SECRET }}"
               echo "PORT=3000"
               echo "MYSQL_ROOT_PASSWORD=${{ secrets.MYSQL_ROOT_PASSWORD }}"
@@ -153,10 +153,10 @@ jobs:
               echo "NODE_ENV=production"
             } > .env
 
-            # Debug: show what we created
-            echo "=== .env file created ==="
-            wc -l .env
-            head -n 2 .env
+            # Verify .env was created
+            echo "=== .env file created successfully ==="
+            cat .env
+            echo "=== End of .env file ==="
 
             # Ensure nginx directory exists and is clean
             mkdir -p nginx && chmod 755 nginx
