@@ -158,7 +158,10 @@ jobs:
 
             # Start stack
             docker compose down --remove-orphans
-            docker compose up --build -d
+            if ! docker compose up --build -d; then
+              echo "Docker Compose failed to start!"
+              exit 1
+            fi
 
             # Cleanup
             docker image prune -f
@@ -184,8 +187,11 @@ jobs:
             sudo netstat -tulpn | grep :80 || echo "Port 80 is NOT listening"
             echo "--- FIREWALL STATUS ---"
             sudo ufw status
+            echo "--- DOCKER NETWORK ---"
+            docker network ls
 
       - name: Verify Deployment Health
+        shell: bash
         run: |
           echo "Waiting for Docker containers to be healthy..."
           HEALTH_URL="http://${{ needs.infrastructure.outputs.ec2_ip }}/health"
@@ -195,8 +201,9 @@ jobs:
           until [ $COUNT -ge $MAX_RETRIES ]
           do
             echo "Checking $HEALTH_URL (Attempt $((COUNT+1))/$MAX_RETRIES)..."
-            # Enhanced curl with verbose info for debugging
-            HTTP_RESPONSE=$(curl -s -v -w "HTTP_CODE:%{http_code}" $HEALTH_URL 2>&1 || true)
+            
+            # Use -m 10 for 10s timeout
+            HTTP_RESPONSE=$(curl -s -m 10 -v -w "HTTP_CODE:%{http_code}" $HEALTH_URL 2>&1 || true)
             HTTP_CODE=$(echo "$HTTP_RESPONSE" | grep -o 'HTTP_CODE:[0-9]*' | cut -d: -f2)
             
             echo "HTTP Code: $HTTP_CODE"
@@ -207,14 +214,16 @@ jobs:
             elif [ "$HTTP_CODE" == "502" ]; then
               echo "Nginx is online! Still waiting for App container/Database (502 Gateway)..."
             elif [ "$HTTP_CODE" == "000" ] || [ -z "$HTTP_CODE" ]; then
-              echo "Still waiting for Nginx to accept connections (Connection Refused)..."
+              echo "Server is not reachable yet (Connection Refused/Timeout)..."
             else
               echo "Received unexpected HTTP Code: $HTTP_CODE"
+              # Show snippet of response body if not 000
+              echo "$HTTP_RESPONSE" | tail -n 5
             fi
             
             echo "Waiting 15 seconds..."
             sleep 15
-            COUNT=$COUNT+1
+            COUNT=$((COUNT + 1))
           done
           
           echo "Health check failed after $MAX_RETRIES attempts!"
