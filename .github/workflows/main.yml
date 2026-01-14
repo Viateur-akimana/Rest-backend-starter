@@ -156,34 +156,56 @@ jobs:
             # Start stack
             docker compose up --build -d
 
-            # Wait for container to be ready for migrations
-            echo "Waiting for container to be ready..."
-            sleep 10
-
-            # Run Prisma Migrations inside the container
-            docker exec ${{ secrets.APP_CONTAINER_NAME || 'node_app' }} npx prisma migrate deploy
-
             # Cleanup
             docker image prune -f
+      
+      - name: Debug Containers on Failure
+        if: failure()
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ needs.infrastructure.outputs.ec2_ip }}
+          username: ${{ secrets.EC2_USERNAME }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            cd /home/${{ secrets.EC2_USERNAME }}/app
+            echo "--- DOCKER PS ---"
+            docker compose ps
+            echo "--- APP LOGS ---"
+            docker compose logs --tail=100 app
+            echo "--- DB LOGS ---"
+            docker compose logs --tail=100 db
+            echo "--- NGINX LOGS ---"
+            docker compose logs --tail=100 nginx
 
       - name: Verify Deployment Health
         run: |
           echo "Waiting for Docker containers to be healthy..."
           HEALTH_URL="http://${{ needs.infrastructure.outputs.ec2_ip }}/health"
-          MAX_RETRIES=12
+          MAX_RETRIES=15
           COUNT=0
           
           until [ $COUNT -ge $MAX_RETRIES ]
           do
             echo "Checking $HEALTH_URL (Attempt $((COUNT+1))/$MAX_RETRIES)..."
-            RESPONSE=$(curl -s -f $HEALTH_URL || echo '{"status":"DOWN"}')
-            echo "Response: $RESPONSE"
+            # Get HTTP code and response body
+            HTTP_RESPONSE=$(curl -s -w "HTTP_CODE:%{http_code}" $HEALTH_URL || echo "CURL_FAILED HTTP_CODE:000")
+            HTTP_CODE=$(echo "$HTTP_RESPONSE" | grep -o 'HTTP_CODE:[0-9]*' | cut -d: -f2)
+            BODY=$(echo "$HTTP_RESPONSE" | sed 's/HTTP_CODE:[0-9]*//')
             
-            HEALTH_STATUS=$(echo $RESPONSE | jq -r .status 2>/dev/null || echo "error")
+            echo "HTTP Code: $HTTP_CODE"
+            echo "Response: $BODY"
             
-            if [ "$HEALTH_STATUS" == "UP" ]; then
+            HEALTH_STATUS=$(echo "$BODY" | jq -r .status 2>/dev/null || echo "error")
+            
+            if [ "$HEALTH_STATUS" == "UP" ] && [ "$HTTP_CODE" == "200" ]; then
               echo "Deployment is healthy and live!"
               exit 0
+            fi
+            
+            if [ "$HTTP_CODE" == "502" ]; then
+              echo "Nginx is up but App is still starting (502 Bad Gateway)..."
+            elif [ "$HTTP_CODE" == "000" ]; then
+              echo "Server is not reachable yet (Connection Refused)..."
             fi
             
             echo "Waiting 15 seconds before next retry..."
@@ -192,4 +214,5 @@ jobs:
           done
           
           echo "Health check failed after $MAX_RETRIES attempts!"
+          echo "Final check for logs..."
           exit 1
