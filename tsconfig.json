@@ -20,10 +20,8 @@
       "@utils/*": ["src/utils/*"]
     },
     "types": ["node"],
-    "sourceMap": true,
-    "composite": true,
-    "incremental": true
+    "sourceMap": true
   },
-  "include": ["src/**/*", "src/types/*.d.ts"],
+  "include": ["src/**/*"],
   "exclude": ["node_modules", "dist", "**/*.spec.ts"]
 }
