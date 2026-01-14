@@ -123,6 +123,12 @@ jobs:
           options: |
             --extra-vars "ansible_ssh_extra_args='-o StrictHostKeyChecking=no'"
 
+      - name: Encode secrets for SSH transfer
+        run: |
+          # Base64-encode secrets to ensure they are single-line and safe to embed in the ssh script
+          echo "ENC_DATABASE_URL=$(printf '%s' "${{ secrets.DATABASE_URL }}" | base64 -w0)" >> $GITHUB_ENV
+          echo "ENC_JWT_SECRET=$(printf '%s' "${{ secrets.JWT_SECRET }}" | base64 -w0)" >> $GITHUB_ENV
+
       - name: Deploy to EC2 via SSH
         uses: appleboy/ssh-action@master
         with:
@@ -141,21 +147,28 @@ jobs:
               git reset --hard origin/master
             fi
 
-            # Create .env file with all secrets
-            {
-              echo "DATABASE_URL=${{ secrets.DATABASE_URL }}"
-              echo "JWT_SECRET=${{ secrets.JWT_SECRET }}"
-              echo "PORT=3000"
-              echo "MYSQL_ROOT_PASSWORD=${{ secrets.MYSQL_ROOT_PASSWORD }}"
-              echo "MYSQL_DATABASE=${{ secrets.MYSQL_DATABASE }}"
-              echo "MYSQL_USER=root"
-              echo "MYSQL_PASSWORD=${{ secrets.MYSQL_ROOT_PASSWORD }}"
-              echo "NODE_ENV=production"
-            } > .env
+            # Create .env file safely by decoding base64-encoded secrets passed via workflow env
+            # Decode the base64 env vars (these are single-line in the workflow) and sanitize
+            DB_URL_RAW=$(printf '%s' "${{ env.ENC_DATABASE_URL }}" | base64 -d)
+            JWT_RAW=$(printf '%s' "${{ env.ENC_JWT_SECRET }}" | base64 -d)
 
-            # Verify .env was created
-            echo "=== .env file created successfully ==="
-            cat .env
+            # Remove any CR/LF characters to ensure single-line values
+            DB_URL_SANITIZED=$(printf '%s' "$DB_URL_RAW" | tr -d '\r\n')
+            JWT_SANITIZED=$(printf '%s' "$JWT_RAW" | tr -d '\r\n')
+
+            # Write .env with sanitized values (use printf with %s to avoid accidental format parsing)
+            printf 'DATABASE_URL=%s\n' "$DB_URL_SANITIZED" > .env
+            printf 'JWT_SECRET=%s\n' "$JWT_SANITIZED" >> .env
+            printf 'PORT=3000\n' >> .env
+            printf 'MYSQL_ROOT_PASSWORD=%s\n' "${{ secrets.MYSQL_ROOT_PASSWORD }}" >> .env
+            printf 'MYSQL_DATABASE=%s\n' "${{ secrets.MYSQL_DATABASE }}" >> .env
+            printf 'MYSQL_USER=root\n' >> .env
+            printf 'MYSQL_PASSWORD=%s\n' "${{ secrets.MYSQL_ROOT_PASSWORD }}" >> .env
+            printf 'NODE_ENV=production\n' >> .env
+
+            # Verify .env was created (show numbered lines)
+            echo "=== .env file created successfully (cat -n) ==="
+            cat -n .env || true
             echo "=== End of .env file ==="
 
             # Ensure nginx directory exists and is clean
