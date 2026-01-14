@@ -145,9 +145,9 @@ jobs:
             DB_PASSWORD="${{ secrets.MYSQL_ROOT_PASSWORD }}"
             DB_NAME="${{ secrets.MYSQL_DATABASE }}"
             
-            # Escape special characters for URL safety using jq
-            DB_PASSWORD_ENCODED=$(printf '%s' "$DB_PASSWORD" | jq -sRr @uri)
-            DB_NAME_ENCODED=$(printf '%s' "$DB_NAME" | jq -sRr @uri)
+            # Escape special characters for URL safety using jq (strip newlines)
+            DB_PASSWORD_ENCODED=$(printf '%s' "$DB_PASSWORD" | jq -sRr @uri | tr -d '\n')
+            DB_NAME_ENCODED=$(printf '%s' "$DB_NAME" | jq -sRr @uri | tr -d '\n')
             
             # Update environment variables
             printf "DATABASE_URL=mysql://root:%s@db:3306/%s\n" "$DB_PASSWORD_ENCODED" "$DB_NAME_ENCODED" > .env
