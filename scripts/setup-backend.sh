@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Configuration - CHANGE THESE TO UNIQUE NAMES
+# Configuration - 
 PROJECT_ID="rest-api-$(head /dev/urandom | tr -dc a-z0-9 | head -c 6)"
 BUCKET_NAME="tf-state-$PROJECT_ID"
 TABLE_NAME="tf-lock-$PROJECT_ID"

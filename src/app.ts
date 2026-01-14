@@ -14,7 +14,7 @@ import { apiRateLimiter } from './middlewares/rateLimit.middleware';
 
 const app = express();
 
-// Trust proxy for rate limiting (needed behind Reverse Proxy/Gateway)
+// Trust proxy for rate limiting (needed behind Reverse Proxy/Nginx)
 app.set('trust proxy', 1);
 
 app.use(express.json());

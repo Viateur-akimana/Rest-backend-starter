@@ -168,16 +168,28 @@ jobs:
 
       - name: Verify Deployment Health
         run: |
-          echo "Waiting for Docker containers to be healthy (approx 60-90s)..."
-          sleep 90
+          echo "Waiting for Docker containers to be healthy..."
           HEALTH_URL="http://${{ needs.infrastructure.outputs.ec2_ip }}/health"
-          echo "Checking $HEALTH_URL"
-          RESPONSE=$(curl -s $HEALTH_URL)
-          echo "Response: $RESPONSE"
-          HEALTH_STATUS=$(echo $RESPONSE | jq -r .status)
-          if [ "$HEALTH_STATUS" != "UP" ]; then
-            echo "Health check failed! App might still be starting or database is unreachable."
-            exit 1
-          else
-            echo "Deployment is healthy and live!"
-          fi
+          MAX_RETRIES=12
+          COUNT=0
+          
+          until [ $COUNT -ge $MAX_RETRIES ]
+          do
+            echo "Checking $HEALTH_URL (Attempt $((COUNT+1))/$MAX_RETRIES)..."
+            RESPONSE=$(curl -s -f $HEALTH_URL || echo '{"status":"DOWN"}')
+            echo "Response: $RESPONSE"
+            
+            HEALTH_STATUS=$(echo $RESPONSE | jq -r .status 2>/dev/null || echo "error")
+            
+            if [ "$HEALTH_STATUS" == "UP" ]; then
+              echo "Deployment is healthy and live!"
+              exit 0
+            fi
+            
+            echo "Waiting 15 seconds before next retry..."
+            sleep 15
+            COUNT=$((COUNT+1))
+          done
+          
+          echo "Health check failed after $MAX_RETRIES attempts!"
+          exit 1
