@@ -13,6 +13,7 @@
       - unzip
       - build-essential
       - fail2ban
+      - jq
     state: present
 
 - name: Ensure unattended-upgrades is installed

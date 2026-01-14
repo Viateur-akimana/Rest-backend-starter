@@ -141,8 +141,16 @@ jobs:
               git reset --hard origin/master
             fi
 
-            # Update environment variables using a safer method (printf)
-            printf "DATABASE_URL=mysql://root:%s@db:3306/%s\n" "${{ secrets.MYSQL_ROOT_PASSWORD }}" "${{ secrets.MYSQL_DATABASE }}" > .env
+            # URL-encode special characters in password for DATABASE_URL
+            DB_PASSWORD="${{ secrets.MYSQL_ROOT_PASSWORD }}"
+            DB_NAME="${{ secrets.MYSQL_DATABASE }}"
+            
+            # Escape special characters for URL safety using jq
+            DB_PASSWORD_ENCODED=$(printf '%s' "$DB_PASSWORD" | jq -sRr @uri)
+            DB_NAME_ENCODED=$(printf '%s' "$DB_NAME" | jq -sRr @uri)
+            
+            # Update environment variables
+            printf "DATABASE_URL=mysql://root:%s@db:3306/%s\n" "$DB_PASSWORD_ENCODED" "$DB_NAME_ENCODED" > .env
             printf "JWT_SECRET=%s\n" "${{ secrets.JWT_SECRET }}" >> .env
             printf "PORT=3000\n" >> .env
             printf "MYSQL_ROOT_PASSWORD=%s\n" "${{ secrets.MYSQL_ROOT_PASSWORD }}" >> .env
