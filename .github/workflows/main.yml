@@ -168,13 +168,15 @@ jobs:
 
       - name: Verify Deployment Health
         run: |
-          echo "Waiting for services to start..."
-          sleep 30
+          echo "Waiting for Docker containers to be healthy (approx 60-90s)..."
+          sleep 90
           HEALTH_URL="http://${{ needs.infrastructure.outputs.ec2_ip }}/health"
           echo "Checking $HEALTH_URL"
-          HEALTH_STATUS=$(curl -s $HEALTH_URL | jq -r .status)
+          RESPONSE=$(curl -s $HEALTH_URL)
+          echo "Response: $RESPONSE"
+          HEALTH_STATUS=$(echo $RESPONSE | jq -r .status)
           if [ "$HEALTH_STATUS" != "UP" ]; then
-            echo "Health check failed!"
+            echo "Health check failed! App might still be starting or database is unreachable."
             exit 1
           else
             echo "Deployment is healthy and live!"
