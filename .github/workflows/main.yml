@@ -83,6 +83,11 @@ jobs:
       - name: Terraform Apply
         run: cd terraform && terraform apply -auto-approve
 
+      - name: Wait for Cloud-Init to finish
+        run: |
+          echo "Waiting for EC2 to finish system updates before Ansible..."
+          sleep 60
+
       - name: Get EC2 IP
         id: ip
         run: |

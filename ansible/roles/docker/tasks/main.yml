@@ -44,13 +44,21 @@
     state: enabled
     policy: deny
 
+- name: Fix potential dpkg locks and interruptions
+  ansible.builtin.shell: |
+    dpkg --configure -a
+    apt-get clean
+    apt-get update
+  changed_when: false
+
 - name: Install Docker and Docker Compose
   ansible.builtin.apt:
     name:
       - docker-ce
       - docker-ce-cli
       - containerd.io
-      - docker-compose-v2
+      - docker-buildx-plugin
+      - docker-compose-plugin
     state: present
     update_cache: yes
 
