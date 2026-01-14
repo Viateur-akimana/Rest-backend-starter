@@ -142,7 +142,7 @@ jobs:
             fi
 
             # Update environment variables
-            cat <<EOF > .env
+            cat <<EOF | sed 's/^[[:space:]]*//' > .env
             DATABASE_URL=mysql://root:${{ secrets.MYSQL_ROOT_PASSWORD }}@db:3306/${{ secrets.MYSQL_DATABASE }}
             JWT_SECRET=${{ secrets.JWT_SECRET }}
             PORT=3000
