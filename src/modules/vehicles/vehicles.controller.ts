@@ -5,10 +5,10 @@ import { BadRequestException } from '../../exceptions/BadRequestException';
 import logger from '../../config/logger';
 
 interface AuthenticatedRequest extends Request {
-    user: {
-        userId: number;
-        role: string;
-    };
+  user: {
+    userId: number;
+    role: string;
+  };
 }
 
 /**
@@ -41,21 +41,21 @@ interface AuthenticatedRequest extends Request {
  *         description: Unauthorized
  */
 export const createVehicle = async (req: Request, res: Response) => {
-    try {
-        const validator = vehicleSchema.safeParse(req.body);
-        if (!validator.success) {
-            throw new BadRequestException('Validation error', validator.error.errors);
-        }
-
-        const authReq = req as AuthenticatedRequest;
-        const vehicle = await vehicleService.createVehicle(authReq.user.userId, validator.data);
-
-        logger.info(`Vehicle created: ${vehicle.plateNumber}`);
-        res.status(201).json(vehicle);
-    } catch (error) {
-        logger.error(`Error creating vehicle: ${error}`);
-        throw error;
+  try {
+    const validator = vehicleSchema.safeParse(req.body);
+    if (!validator.success) {
+      throw new BadRequestException('Validation error', validator.error.errors);
     }
+
+    const authReq = req as AuthenticatedRequest;
+    const vehicle = await vehicleService.createVehicle(authReq.user.userId, validator.data);
+
+    logger.info(`Vehicle created: ${vehicle.plateNumber}`);
+    res.status(201).json(vehicle);
+  } catch (error) {
+    logger.error(`Error creating vehicle: ${error}`);
+    throw error;
+  }
 };
 
 /**
@@ -91,25 +91,20 @@ export const createVehicle = async (req: Request, res: Response) => {
  *         description: Unauthorized
  */
 export const getAllVehicles = async (req: Request, res: Response) => {
-    try {
-        const authReq = req as AuthenticatedRequest;
-        const page = parseInt(req.query.page as string) || 1;
-        const limit = parseInt(req.query.limit as string) || 10;
-        const search = req.query.search as string;
+  try {
+    const authReq = req as AuthenticatedRequest;
+    const page = parseInt(req.query.page as string) || 1;
+    const limit = parseInt(req.query.limit as string) || 10;
+    const search = req.query.search as string;
 
-        const vehicles = await vehicleService.getVehicles(
-            authReq.user.userId,
-            page,
-            limit,
-            search
-        );
+    const vehicles = await vehicleService.getVehicles(authReq.user.userId, page, limit, search);
 
-        logger.info(`Vehicles retrieved for user: ${authReq.user.userId}`);
-        res.json(vehicles);
-    } catch (error) {
-        logger.error(`Error retrieving vehicles: ${error}`);
-        throw error;
-    }
+    logger.info(`Vehicles retrieved for user: ${authReq.user.userId}`);
+    res.json(vehicles);
+  } catch (error) {
+    logger.error(`Error retrieving vehicles: ${error}`);
+    throw error;
+  }
 };
 
 /**
@@ -138,21 +133,21 @@ export const getAllVehicles = async (req: Request, res: Response) => {
  *         description: Vehicle not found
  */
 export const getVehicleById = async (req: Request, res: Response) => {
-    try {
-        const id = parseInt(req.params.id);
-        if (isNaN(id)) {
-            throw new BadRequestException('Invalid vehicle id');
-        }
-
-        const authReq = req as AuthenticatedRequest;
-        const vehicle = await vehicleService.getVehicleById(authReq.user.userId, id);
-
-        logger.info(`Vehicle retrieved: ${id}`);
-        res.json(vehicle);
-    } catch (error) {
-        logger.error(`Error retrieving vehicle: ${error}`);
-        throw error;
+  try {
+    const id = parseInt(req.params.id as string);
+    if (isNaN(id)) {
+      throw new BadRequestException('Invalid vehicle id');
     }
+
+    const authReq = req as AuthenticatedRequest;
+    const vehicle = await vehicleService.getVehicleById(authReq.user.userId, id);
+
+    logger.info(`Vehicle retrieved: ${id}`);
+    res.json(vehicle);
+  } catch (error) {
+    logger.error(`Error retrieving vehicle: ${error}`);
+    throw error;
+  }
 };
 
 /**
@@ -187,30 +182,30 @@ export const getVehicleById = async (req: Request, res: Response) => {
  *         description: Vehicle not found
  */
 export const updateVehicle = async (req: Request, res: Response) => {
-    try {
-        const id = parseInt(req.params.id);
-        if (isNaN(id)) {
-            throw new BadRequestException('Invalid vehicle id');
-        }
-
-        const validator = vehicleSchema.safeParse(req.body);
-        if (!validator.success) {
-            throw new BadRequestException('Validation error', validator.error.errors);
-        }
-
-        const authReq = req as AuthenticatedRequest;
-        const updatedVehicle = await vehicleService.updateVehicle(
-            authReq.user.userId,
-            id,
-            validator.data
-        );
-
-        logger.info(`Vehicle updated: ${id}`);
-        res.json(updatedVehicle);
-    } catch (error) {
-        logger.error(`Error updating vehicle: ${error}`);
-        throw error;
+  try {
+    const id = parseInt(req.params.id as string);
+    if (isNaN(id)) {
+      throw new BadRequestException('Invalid vehicle id');
     }
+
+    const validator = vehicleSchema.safeParse(req.body);
+    if (!validator.success) {
+      throw new BadRequestException('Validation error', validator.error.errors);
+    }
+
+    const authReq = req as AuthenticatedRequest;
+    const updatedVehicle = await vehicleService.updateVehicle(
+      authReq.user.userId,
+      id,
+      validator.data,
+    );
+
+    logger.info(`Vehicle updated: ${id}`);
+    res.json(updatedVehicle);
+  } catch (error) {
+    logger.error(`Error updating vehicle: ${error}`);
+    throw error;
+  }
 };
 
 /**
@@ -239,19 +234,19 @@ export const updateVehicle = async (req: Request, res: Response) => {
  *         description: Vehicle not found
  */
 export const deleteVehicle = async (req: Request, res: Response) => {
-    try {
-        const id = parseInt(req.params.id);
-        if (isNaN(id)) {
-            throw new BadRequestException('Invalid vehicle id');
-        }
-
-        const authReq = req as AuthenticatedRequest;
-        await vehicleService.deleteVehicle(authReq.user.userId, id);
-
-        logger.info(`Vehicle deleted: ${id}`);
-        res.status(204).send();
-    } catch (error) {
-        logger.error(`Error deleting vehicle: ${error}`);
-        throw error;
+  try {
+    const id = parseInt(req.params.id as string);
+    if (isNaN(id)) {
+      throw new BadRequestException('Invalid vehicle id');
     }
+
+    const authReq = req as AuthenticatedRequest;
+    await vehicleService.deleteVehicle(authReq.user.userId, id);
+
+    logger.info(`Vehicle deleted: ${id}`);
+    res.status(204).send();
+  } catch (error) {
+    logger.error(`Error deleting vehicle: ${error}`);
+    throw error;
+  }
 };

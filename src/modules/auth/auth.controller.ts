@@ -4,7 +4,6 @@ import { loginSchema, registerSchema } from './auth.validator';
 import { BadRequestException } from '../../exceptions/BadRequestException';
 import logger from '../../config/logger';
 
-
 /**
  * @swagger
  * tags:
@@ -35,20 +34,19 @@ import logger from '../../config/logger';
  *         description: Validation error
  */
 export const register = async (req: Request, res: Response) => {
-    try {
-        const validator = registerSchema.safeParse(req.body);
-        if (!validator.success) {
-            throw new BadRequestException('Invalid input', validator.error.errors);
-        }
-        const { token, user } = await authService.register(validator.data);
-        logger.info(`User registered: ${user.email}`);
-        res.setHeader('Authorization', `Bearer ${token}`);
-        res.status(201).json({ user });
-    } catch (error) {
-        logger.error(`Error during registration: ${error}`);
-        throw error;
+  try {
+    const validator = registerSchema.safeParse(req.body);
+    if (!validator.success) {
+      throw new BadRequestException('Invalid input', validator.error.errors);
     }
-
+    const { token, user } = await authService.register(validator.data);
+    logger.info(`User registered: ${user.email}`);
+    res.setHeader('Authorization', `Bearer ${token}`);
+    res.status(201).json({ user });
+  } catch (error) {
+    logger.error(`Error during registration: ${error}`);
+    throw error;
+  }
 };
 /**
  * @swagger
@@ -73,19 +71,17 @@ export const register = async (req: Request, res: Response) => {
  *         description: Invalid credentials
  */
 export const login = async (req: Request, res: Response) => {
-    try {
-        const validator = loginSchema.safeParse(req.body);
-        if (!validator.success) {
-            throw new BadRequestException('Validation Errors', validator.error.errors);
-        }
-        const { token, user } = await authService.login(validator.data);
-        logger.info(`User logged in: ${user.email}`);
-        res.setHeader('Authorization', `Bearer ${token}`);
-        res.status(200).json({ "Access_token": token, "user": user });
-    } catch (error) {
-        logger.error(`Error during login: ${error}`);
-        throw error;
-
+  try {
+    const validator = loginSchema.safeParse(req.body);
+    if (!validator.success) {
+      throw new BadRequestException('Validation Errors', validator.error.errors);
     }
-
+    const { token, user } = await authService.login(validator.data);
+    logger.info(`User logged in: ${user.email}`);
+    res.setHeader('Authorization', `Bearer ${token}`);
+    res.status(200).json({ Access_token: token, user: user });
+  } catch (error) {
+    logger.error(`Error during login: ${error}`);
+    throw error;
+  }
 };

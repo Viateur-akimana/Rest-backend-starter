@@ -5,10 +5,12 @@
     "start": "node dist/server.js",
     "dev": "ts-node-dev src/server.ts",
     "migrate": "prisma migrate dev",
-    "docker:migrate": "npx prisma migrate deploy"
+    "docker:migrate": "npx prisma migrate deploy",
+    "prepare": "husky install",
+    "format": "prettier --write \"src/**/*.ts\""
   },
   "dependencies": {
-    "@prisma/client": "^6.6.0",
+    "@prisma/client": "^6.19.2",
     "@types/morgan": "^1.9.9",
     "@types/nodemailer": "^6.4.17",
     "bcrypt": "^5.1.1",
@@ -36,13 +38,26 @@
     "@types/node": "^22.14.1",
     "@types/swagger-jsdoc": "^6.0.4",
     "@types/swagger-ui-express": "^4.1.8",
+    "husky": "^9.1.7",
+    "lint-staged": "^16.2.7",
+    "prettier": "^3.7.4",
+    "prisma": "^6.19.2",
     "ts-node-dev": "^2.0.0",
     "typescript": "^5.8.3"
   },
-  "description": "",
+  "description": "Parking Management System API",
   "version": "1.0.0",
-  "main": "index.js",
+  "private": true,
   "keywords": [],
   "author": "",
-  "license": "ISC"
+  "license": "ISC",
+  "lint-staged": {
+    "src/**/*.ts": [
+      "prettier --write",
+      "npm run build"
+    ],
+    "*.{json,md}": [
+      "prettier --write"
+    ]
+  }
 }

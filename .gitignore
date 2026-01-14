@@ -44,3 +44,27 @@ node_modules/
 package-lock.json
 .npm
 /generated/*
+
+# Terraform
+.terraform/
+*.tfstate
+*.tfstate.*
+terraform.tfvars
+*.tfvars
+*.tfplan
+
+# Ansible
+*.retry
+
+# OS
+.DS_Store
+Thumbs.db
+*.tfstate.backup
+*.tfvars
+*.tfvars.json
+tfplan
+.terraform.lock.hcl
+
+# Ansible
+*.retry
+ansible/*.retry

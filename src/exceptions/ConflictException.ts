@@ -1,7 +1,7 @@
-import { HttpException } from "./HttpException";
+import { HttpException } from './HttpException';
 
 export class ConflictException extends HttpException {
-    constructor(message: string = 'Conflict', errors?: any) {
-        super(409, message, errors);
-    }
+  constructor(message: string = 'Conflict', errors?: any) {
+    super(409, message, errors);
+  }
 }
