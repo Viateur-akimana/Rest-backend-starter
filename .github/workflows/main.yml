@@ -141,23 +141,22 @@ jobs:
               git reset --hard origin/master
             fi
 
-            # URL-encode special characters in password for DATABASE_URL
-            DB_PASSWORD="${{ secrets.MYSQL_ROOT_PASSWORD }}"
-            DB_NAME="${{ secrets.MYSQL_DATABASE }}"
-            
-            # Escape special characters for URL safety using jq (strip newlines)
-            DB_PASSWORD_ENCODED=$(printf '%s' "$DB_PASSWORD" | jq -sRr @uri | tr -d '\n')
-            DB_NAME_ENCODED=$(printf '%s' "$DB_NAME" | jq -sRr @uri | tr -d '\n')
-            
-            # Update environment variables
-            printf "DATABASE_URL=mysql://root:%s@db:3306/%s\n" "$DB_PASSWORD_ENCODED" "$DB_NAME_ENCODED" > .env
-            printf "JWT_SECRET=%s\n" "${{ secrets.JWT_SECRET }}" >> .env
-            printf "PORT=3000\n" >> .env
-            printf "MYSQL_ROOT_PASSWORD=%s\n" "${{ secrets.MYSQL_ROOT_PASSWORD }}" >> .env
-            printf "MYSQL_DATABASE=%s\n" "${{ secrets.MYSQL_DATABASE }}" >> .env
-            printf "MYSQL_USER=root\n" >> .env
-            printf "MYSQL_PASSWORD=%s\n" "${{ secrets.MYSQL_ROOT_PASSWORD }}" >> .env
-            printf "NODE_ENV=production\n" >> .env
+            # Create .env file with all secrets (GitHub substitutes them BEFORE SSH sends this script)
+            {
+              echo "DATABASE_URL=mysql://root:${{ secrets.MYSQL_ROOT_PASSWORD }}@db:3306/${{ secrets.MYSQL_DATABASE }}"
+              echo "JWT_SECRET=${{ secrets.JWT_SECRET }}"
+              echo "PORT=3000"
+              echo "MYSQL_ROOT_PASSWORD=${{ secrets.MYSQL_ROOT_PASSWORD }}"
+              echo "MYSQL_DATABASE=${{ secrets.MYSQL_DATABASE }}"
+              echo "MYSQL_USER=root"
+              echo "MYSQL_PASSWORD=${{ secrets.MYSQL_ROOT_PASSWORD }}"
+              echo "NODE_ENV=production"
+            } > .env
+
+            # Debug: show what we created
+            echo "=== .env file created ==="
+            wc -l .env
+            head -n 2 .env
 
             # Ensure nginx directory exists and is clean
             mkdir -p nginx && chmod 755 nginx
