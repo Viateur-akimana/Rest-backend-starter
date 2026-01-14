@@ -141,15 +141,15 @@ jobs:
               git reset --hard origin/master
             fi
 
-            # Update environment variables
-            echo "DATABASE_URL=mysql://root:${{ secrets.MYSQL_ROOT_PASSWORD }}@db:3306/${{ secrets.MYSQL_DATABASE }}" > .env
-            echo "JWT_SECRET=${{ secrets.JWT_SECRET }}" >> .env
-            echo "PORT=3000" >> .env
-            echo "MYSQL_ROOT_PASSWORD=${{ secrets.MYSQL_ROOT_PASSWORD }}" >> .env
-            echo "MYSQL_DATABASE=${{ secrets.MYSQL_DATABASE }}" >> .env
-            echo "MYSQL_PASSWORD=${{ secrets.MYSQL_ROOT_PASSWORD }}" >> .env
-            echo "MYSQL_USER=root" >> .env
-            echo "NODE_ENV=production" >> .env
+            # Update environment variables using a safer method (printf)
+            printf "DATABASE_URL=mysql://root:%s@db:3306/%s\n" "${{ secrets.MYSQL_ROOT_PASSWORD }}" "${{ secrets.MYSQL_DATABASE }}" > .env
+            printf "JWT_SECRET=%s\n" "${{ secrets.JWT_SECRET }}" >> .env
+            printf "PORT=3000\n" >> .env
+            printf "MYSQL_ROOT_PASSWORD=%s\n" "${{ secrets.MYSQL_ROOT_PASSWORD }}" >> .env
+            printf "MYSQL_DATABASE=%s\n" "${{ secrets.MYSQL_DATABASE }}" >> .env
+            printf "MYSQL_USER=root\n" >> .env
+            printf "MYSQL_PASSWORD=%s\n" "${{ secrets.MYSQL_ROOT_PASSWORD }}" >> .env
+            printf "NODE_ENV=production\n" >> .env
 
             # Ensure nginx directory exists and is clean
             mkdir -p nginx && chmod 755 nginx
