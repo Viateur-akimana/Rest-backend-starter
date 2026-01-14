@@ -142,16 +142,14 @@ jobs:
             fi
 
             # Update environment variables
-            cat <<EOF | sed 's/^[[:space:]]*//' > .env
-            DATABASE_URL=mysql://root:${{ secrets.MYSQL_ROOT_PASSWORD }}@db:3306/${{ secrets.MYSQL_DATABASE }}
-            JWT_SECRET=${{ secrets.JWT_SECRET }}
-            PORT=3000
-            MYSQL_ROOT_PASSWORD=${{ secrets.MYSQL_ROOT_PASSWORD }}
-            MYSQL_DATABASE=${{ secrets.MYSQL_DATABASE }}
-            MYSQL_PASSWORD=${{ secrets.MYSQL_ROOT_PASSWORD }}
-            MYSQL_USER=root
-            NODE_ENV=production
-            EOF
+            echo "DATABASE_URL=mysql://root:${{ secrets.MYSQL_ROOT_PASSWORD }}@db:3306/${{ secrets.MYSQL_DATABASE }}" > .env
+            echo "JWT_SECRET=${{ secrets.JWT_SECRET }}" >> .env
+            echo "PORT=3000" >> .env
+            echo "MYSQL_ROOT_PASSWORD=${{ secrets.MYSQL_ROOT_PASSWORD }}" >> .env
+            echo "MYSQL_DATABASE=${{ secrets.MYSQL_DATABASE }}" >> .env
+            echo "MYSQL_PASSWORD=${{ secrets.MYSQL_ROOT_PASSWORD }}" >> .env
+            echo "MYSQL_USER=root" >> .env
+            echo "NODE_ENV=production" >> .env
 
             # Ensure nginx directory exists and is clean
             mkdir -p nginx && chmod 755 nginx
