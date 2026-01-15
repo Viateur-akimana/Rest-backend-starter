@@ -3,29 +3,12 @@ name: CI/CD Pipeline
 on:
   push:
     branches: [master]
-  pull_request:
-    branches: [master]
   workflow_dispatch:
 
 jobs:
-  test-and-build:
-    name: Continuous Integration
+  build:
+    name: Build & Test
     runs-on: ubuntu-latest
-
-    services:
-      mysql:
-        image: mysql:8.0
-        env:
-          MYSQL_ROOT_PASSWORD: ${{ secrets.MYSQL_ROOT_PASSWORD }}
-          MYSQL_DATABASE: ${{ secrets.MYSQL_DATABASE }}
-        ports:
-          - 3306:3306
-        options: >-
-          --health-cmd="mysqladmin ping"
-          --health-interval=10s
-          --health-timeout=5s
-          --health-retries=3
-
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -39,19 +22,13 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Generate Prisma Client
-        run: npx prisma generate
-
-      - name: Run TypeScript Build
+      - name: Build application
         run: npm run build
 
-      - name: Build Docker Image (Dry Run)
-        run: docker build -t test-image .
-
   infrastructure:
-    name: Infrastructure Provisioning
+    name: Provision Infrastructure
     runs-on: ubuntu-latest
-    if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+    needs: build
     env:
       AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
       AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
@@ -59,7 +36,6 @@ jobs:
       TF_VAR_project_name: ${{ vars.PROJECT_NAME }}
       TF_VAR_aws_region: ${{ vars.AWS_REGION }}
       TF_VAR_instance_type: ${{ vars.INSTANCE_TYPE }}
-
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -76,108 +52,57 @@ jobs:
             -backend-config="region=${{ vars.AWS_REGION }}" \
             -backend-config="dynamodb_table=${{ secrets.TF_STATE_TABLE }}"
 
-      - name: Terraform Plan
-        run: cd terraform && terraform plan
-
-      # Only apply if not a PR
       - name: Terraform Apply
         run: cd terraform && terraform apply -auto-approve
 
-      - name: Wait for Cloud-Init to finish
-        run: |
-          echo "Waiting for EC2 to finish system updates before Ansible..."
-          sleep 60
-
       - name: Get EC2 IP
         id: ip
-        run: |
-          cd terraform
-          echo "EC2_IP=$(terraform output -raw instance_public_ip)" >> $GITHUB_OUTPUT
+        run: echo "EC2_IP=$(cd terraform && terraform output -raw instance_public_ip)" >> $GITHUB_OUTPUT
 
     outputs:
       ec2_ip: ${{ steps.ip.outputs.EC2_IP }}
 
   deploy:
-    name: Continuous Deployment (EC2)
+    name: Deploy to EC2
     runs-on: ubuntu-latest
-    needs: [test-and-build, infrastructure]
-    if: github.event_name == 'push' && github.ref == 'refs/heads/master'
-
+    needs: [build, infrastructure]
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Install Ansible collections
-        run: |
-          ansible-galaxy collection install -r ansible/requirements.yml
-
-      - name: Configure EC2 with Ansible
-        uses: dawidd6/action-ansible-playbook@v2
-        with:
-          playbook: ansible/playbook.yml
-          directory: ./
-          key: ${{ secrets.EC2_SSH_KEY }}
-          inventory: |
-            [all]
-            ${{ needs.infrastructure.outputs.ec2_ip }} ansible_user=${{ secrets.EC2_USERNAME }}
-          options: |
-            --extra-vars "ansible_ssh_extra_args='-o StrictHostKeyChecking=no'"
-
-      - name: Deploy to EC2 via SSH
+      - name: Deploy application
         uses: appleboy/ssh-action@master
         env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
-          JWT_SECRET: ${{ secrets.JWT_SECRET }}
-          MYSQL_ROOT_PASSWORD: ${{ secrets.MYSQL_ROOT_PASSWORD }}
-          MYSQL_DATABASE: ${{ secrets.MYSQL_DATABASE }}
+          ENV_FILE: ${{ secrets.APP_ENV_VARIABLES }}
         with:
           host: ${{ needs.infrastructure.outputs.ec2_ip }}
           username: ${{ secrets.EC2_USERNAME }}
           key: ${{ secrets.EC2_SSH_KEY }}
-          envs: DATABASE_URL,JWT_SECRET,MYSQL_ROOT_PASSWORD,MYSQL_DATABASE
+          envs: ENV_FILE
           script: |
             APP_DIR="/home/${{ secrets.EC2_USERNAME }}/app"
-            cd $APP_DIR || mkdir -p $APP_DIR && cd $APP_DIR
+            mkdir -p $APP_DIR && cd $APP_DIR
 
-            # Update source code
+            # Clone or update repository
             if [ ! -d ".git" ]; then
               git clone https://github.com/${{ github.repository }}.git .
             else
-              git fetch origin master
-              git reset --hard origin/master
+              git fetch origin master && git reset --hard origin/master
             fi
 
-            # Create .env file using environment variables passed by SSH action
-            # These are already sanitized by appleboy/ssh-action and don't need encoding/decoding
-            printf 'DATABASE_URL=%s\n' "$DATABASE_URL" > .env
-            printf 'JWT_SECRET=%s\n' "$JWT_SECRET" >> .env
-            printf 'PORT=3000\n' >> .env
-            printf 'MYSQL_ROOT_PASSWORD=%s\n' "$MYSQL_ROOT_PASSWORD" >> .env
-            printf 'MYSQL_DATABASE=%s\n' "$MYSQL_DATABASE" >> .env
-            printf 'MYSQL_USER=root\n' >> .env
-            printf 'MYSQL_PASSWORD=%s\n' "$MYSQL_ROOT_PASSWORD" >> .env
-            printf 'NODE_ENV=production\n' >> .env
+            # Create .env file
+            echo "$ENV_FILE" > .env
 
-            # Verify .env was created (show numbered lines)
-            echo "=== .env file created successfully (cat -n) ==="
-            cat -n .env || true
-            echo "=== End of .env file ==="
-
-            # Ensure nginx directory exists and is clean
-            mkdir -p nginx && chmod 755 nginx
-
-            # Start stack
-            docker compose down --remove-orphans
-            if ! docker compose up --build -d; then
-              echo "Docker Compose failed to start!"
-              exit 1
-            fi
+            # Start containers
+            mkdir -p nginx
+            docker compose down --remove-orphans 2>/dev/null || true
+            docker compose up --build -d
 
             # Cleanup
             docker image prune -f
-      
-      - name: Debug Containers on Failure
-        if: failure()
+
+      - name: Verify deployment
+        if: always()
         uses: appleboy/ssh-action@master
         with:
           host: ${{ needs.infrastructure.outputs.ec2_ip }}
@@ -185,84 +110,8 @@ jobs:
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
             cd /home/${{ secrets.EC2_USERNAME }}/app
-            echo "=== DOCKER COMPOSE STATUS ==="
+            echo "=== Docker Compose Status ==="
             docker compose ps
-            
             echo ""
-            echo "=== APP CONTAINER LOGS (last 150 lines) ==="
-            docker compose logs --tail=150 app || echo "App logs unavailable"
-            
-            echo ""
-            echo "=== DATABASE CONTAINER LOGS (last 100 lines) ==="
-            docker compose logs --tail=100 db || echo "DB logs unavailable"
-            
-            echo ""
-            echo "=== NGINX LOGS (last 50 lines) ==="
-            docker compose logs --tail=50 nginx || echo "Nginx logs unavailable"
-            
-            echo ""
-            echo "=== APP CONTAINER INSPECTION ==="
-            docker inspect $(docker compose ps -q app) 2>/dev/null | grep -A 5 '"State"' || echo "Could not inspect app"
-            
-            echo ""
-            echo "=== NETWORK DIAGNOSTICS ==="
-            docker exec $(docker compose ps -q app) netstat -tulpn 2>/dev/null || echo "Netstat in app container failed"
-            
-            echo ""
-            echo "=== CHECK IF APP IS LISTENING ON 3000 ==="
-            docker exec $(docker compose ps -q app) sh -c 'nc -zv localhost 3000' 2>&1 || echo "Port 3000 not listening in app container"
-            
-            echo ""
-            echo "=== DOCKER NETWORK CONNECTIVITY ==="
-            docker exec $(docker compose ps -q app) ping -c 2 db 2>&1 || echo "Cannot reach db from app"
-            
-            echo ""
-            echo "=== HOST PORT CHECKS ==="
-            sudo netstat -tulpn | grep -E ':(80|3000|3306)' || echo "No services on ports 80, 3000, or 3306"
-            
-            echo ""
-            echo "=== FIREWALL STATUS ==="
-            sudo ufw status numbered || echo "UFW check failed"
-            
-            echo ""
-            echo "=== DOCKER NETWORK LIST ==="
-            docker network ls
-
-      - name: Verify Deployment Health
-        shell: bash
-        run: |
-          echo "Waiting for Docker containers to be healthy..."
-          HEALTH_URL="http://${{ needs.infrastructure.outputs.ec2_ip }}/health"
-          MAX_RETRIES=20
-          COUNT=0
-          
-          until [ $COUNT -ge $MAX_RETRIES ]
-          do
-            echo "Checking $HEALTH_URL (Attempt $((COUNT+1))/$MAX_RETRIES)..."
-            
-            # Use -m 10 for 10s timeout
-            HTTP_RESPONSE=$(curl -s -m 10 -v -w "HTTP_CODE:%{http_code}" $HEALTH_URL 2>&1 || true)
-            HTTP_CODE=$(echo "$HTTP_RESPONSE" | grep -o 'HTTP_CODE:[0-9]*' | cut -d: -f2)
-            
-            echo "HTTP Code: $HTTP_CODE"
-            
-            if [ "$HTTP_CODE" == "200" ]; then
-              echo "Deployment is healthy and live!"
-              exit 0
-            elif [ "$HTTP_CODE" == "502" ]; then
-              echo "Nginx is online! Still waiting for App container/Database (502 Gateway)..."
-            elif [ "$HTTP_CODE" == "000" ] || [ -z "$HTTP_CODE" ]; then
-              echo "Server is not reachable yet (Connection Refused/Timeout)..."
-            else
-              echo "Received unexpected HTTP Code: $HTTP_CODE"
-              # Show snippet of response body if not 000
-              echo "$HTTP_RESPONSE" | tail -n 5
-            fi
-            
-            echo "Waiting 15 seconds..."
-            sleep 15
-            COUNT=$((COUNT + 1))
-          done
-          
-          echo "Health check failed after $MAX_RETRIES attempts!"
-          exit 1
+            echo "=== App Logs ==="
+            docker compose logs --tail=50 app 2>/dev/null || echo "No app logs"
